@@ -52,6 +52,16 @@ function fmt$(n: number) {
   return Number(n).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
+function monthlyFromSchedule(s: PayScheduleResponse): number {
+  const a = Number(s.amount);
+  switch (s.frequency) {
+    case "twice_monthly": return a * 2;
+    case "monthly":       return a;
+    case "biweekly":      return (a * 26) / 12;
+    case "once":          return a;
+  }
+}
+
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return null;
   // Slice to YYYY-MM-DD in case DB returns a full timestamp
@@ -362,7 +372,6 @@ export default function DashboardPage() {
     fetch("/api/pay-schedule").then((r) => r.json()).then(setSchedules);
   }, []);
 
-  // For display: filter schedules to those active in the selected month
   const visibleSchedules = schedules?.filter((s) => {
     // One-time: only show in its specific month (or always if no date set)
     if (s.frequency === "once") {
@@ -379,11 +388,24 @@ export default function DashboardPage() {
     return true;
   });
 
+  const monthlyTotal = visibleSchedules?.reduce((sum, s) => sum + monthlyFromSchedule(s), 0) ?? 0;
+  const scheduleCount = visibleSchedules?.length ?? 0;
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Income</h1>
         <p className="text-sm text-slate-500 mt-0.5">{monthLabel}</p>
+        {schedules !== undefined && (
+          <p className="mt-2">
+            <span className="text-2xl font-bold tabular-nums text-emerald-400">
+              {monthlyTotal > 0 ? fmt$(monthlyTotal) : "—"}
+            </span>
+            <span className="ml-2 text-sm text-slate-500">
+              / month{scheduleCount > 0 ? ` · ${scheduleCount} schedule${scheduleCount !== 1 ? "s" : ""}` : ""}
+            </span>
+          </p>
+        )}
       </div>
 
       {schedules !== undefined && (

@@ -13,7 +13,7 @@ import { CurrencyInput } from "@/components/CurrencyInput";
 import { DateInput } from "@/components/DateInput";
 import type { Bill, BillInput, DiscretionaryItem, DiscretionaryFrequency } from "@/lib/types";
 import type { BillFrequency } from "@/lib/bills";
-import { frequencyLabel, computeNextDueDate } from "@/lib/bills";
+import { frequencyLabel, computeNextDueDate, monthlyEquivalent } from "@/lib/bills";
 import { useMonth } from "@/components/MonthContext";
 import { InlineConfirm } from "@/components/InlineConfirm";
 
@@ -385,12 +385,18 @@ function PlannedSection() {
     }
   }
 
+  const plannedTotal = all.reduce((sum, p) => sum + Number(p.amount), 0);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">Planned Expenses</h2>
-          <p className="text-sm text-slate-500 mt-0.5">One-time expenses by month</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {plannedTotal > 0
+              ? <><span className="text-orange-400 font-semibold tabular-nums">{fmt$(plannedTotal)}</span> this month</>
+              : "One-time expenses by month"}
+          </p>
         </div>
         {!showForm && !editing && (
           <button onClick={() => setShowForm(true)} className={btn.primarySm}>+ Add</button>
@@ -513,12 +519,20 @@ function DiscretionarySection() {
     }
   }
 
+  const discMonthlyTotal = items.reduce((sum, item) => sum + monthlyEquivalent({
+    frequency: item.frequency, due_day: null, due_day_2: null, anchor_date: null, amount: item.amount,
+  }), 0);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">Buffer</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Discretionary amounts kept as a buffer each paycheck</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {discMonthlyTotal > 0
+              ? <><span className="text-violet-400 font-semibold tabular-nums">{fmt$(discMonthlyTotal)}</span> / month</>
+              : "Discretionary amounts kept as a buffer each paycheck"}
+          </p>
         </div>
         {!showForm && !editing && (
           <button onClick={() => setShowForm(true)} className={btn.primarySm}>
@@ -876,11 +890,29 @@ export default function ExpensesPage() {
   const g = grouped(bills);
   const cats = categories(bills);
 
+  const monthlyBills = bills
+    .filter((b) => b.recurring && b.active)
+    .reduce((sum, b) => sum + monthlyEquivalent({
+      frequency: b.frequency, due_day: b.due_day, due_day_2: b.due_day_2,
+      anchor_date: b.anchor_date, amount: b.amount,
+    }), 0);
+  const recurringCount = bills.filter((b) => b.recurring && b.active).length;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
         <p className="text-sm text-slate-500 mt-0.5">Bills, planned expenses & buffer</p>
+        {!loading && (
+          <p className="mt-2">
+            <span className="text-2xl font-bold tabular-nums text-rose-400">
+              {monthlyBills > 0 ? fmt$(monthlyBills) : "—"}
+            </span>
+            <span className="ml-2 text-sm text-slate-500">
+              / month in bills{recurringCount > 0 ? ` · ${recurringCount} recurring` : ""}
+            </span>
+          </p>
+        )}
       </div>
 
       {error && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const MONTH_NAMES = [
@@ -24,27 +24,6 @@ export function MonthProvider({ children }: { children: React.ReactNode }) {
   const now = new Date();
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
-
-  // Restore from localStorage after mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("fin-selected-month");
-      if (saved) {
-        const [y, m] = saved.split("-").map(Number);
-        if (!isNaN(y) && !isNaN(m) && m >= 0 && m <= 11) {
-          setYear(y);
-          setMonth(m);
-        }
-      }
-    } catch {}
-  }, []);
-
-  // Persist whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem("fin-selected-month", `${year}-${month}`);
-    } catch {}
-  }, [year, month]);
 
   function prevMonth() {
     if (month === 0) { setYear((y) => y - 1); setMonth(11); }
